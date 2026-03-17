@@ -1,7 +1,8 @@
 /**
  * Middleware for auth protection
- * Fixed redirect loop
+ * Stable version
  */
+
 import { type NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = [
@@ -17,7 +18,7 @@ const PUBLIC_PATHS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip static files
+  // Skip static / api / files
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -26,7 +27,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow public paths
+  // Allow public routes
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
@@ -35,11 +36,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check auth cookie (less strict)
+  // Check auth cookie (safer check)
   const cookies = request.cookies.getAll()
 
-  const hasAuthCookie = cookies.some((c) =>
-    c.name.includes('auth-token')
+  const hasAuthCookie = cookies.some(
+    (c) =>
+      c.name.includes('sb') ||
+      c.name.includes('supabase') ||
+      c.name.includes('auth')
   )
 
   if (!hasAuthCookie) {
