@@ -1,13 +1,12 @@
 /**
  * Middleware for auth protection
- * NO @supabase/ssr dependency
- * Updated: v0.3.0
+ * Fixed redirect loop
  */
 import { type NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = [
   '/auth/login',
-  '/auth/sign-up', 
+  '/auth/sign-up',
   '/auth/sign-up-success',
   '/auth/error',
   '/auth/callback',
@@ -19,19 +18,28 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Skip static files
-  if (pathname.startsWith('/_next') || pathname.includes('.')) {
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next()
   }
 
   // Allow public paths
-  const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  )
+
   if (isPublic) {
     return NextResponse.next()
   }
 
-  // Check for Supabase auth cookie on protected paths
-  const hasAuthCookie = request.cookies.getAll().some(
-    c => c.name.includes('sb-') && c.name.includes('-auth-token')
+  // Check auth cookie (less strict)
+  const cookies = request.cookies.getAll()
+
+  const hasAuthCookie = cookies.some((c) =>
+    c.name.includes('auth-token')
   )
 
   if (!hasAuthCookie) {
