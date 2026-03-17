@@ -32,16 +32,12 @@ export function SignUpForm() {
 
     try {
       const supabase = createClient()
-      
-      // Sign up the user - Supabase will auto-confirm if email confirmation is disabled
-      const { error: signUpError } = await supabase.auth.signUp({
+
+      // Sign up — Supabase email confirmation must be OFF in Auth settings
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
+        options: { data: { full_name: fullName } },
       })
 
       if (signUpError) {
@@ -50,21 +46,20 @@ export function SignUpForm() {
         return
       }
 
-      // Immediately sign in with credentials (bypasses email confirmation)
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // If there's already a session (email confirmation disabled), go directly
+      if (data.session) {
+        router.push('/onboarding')
+        return
+      }
 
+      // Fallback: try signing in immediately
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
       if (signInError) {
-        // If email confirmation is enforced by Supabase project settings,
-        // this will fail - inform user to check their email
-        setError('Account created! Please check your email to confirm, then log in.')
+        setError('Account created but email confirmation may be required. Please check your inbox or try logging in.')
         setIsLoading(false)
         return
       }
 
-      // Successfully signed in, go to onboarding
       router.push('/onboarding')
     } catch {
       setError('An unexpected error occurred')

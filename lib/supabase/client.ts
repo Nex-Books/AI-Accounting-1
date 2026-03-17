@@ -1,24 +1,23 @@
 'use client'
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+/**
+ * Browser-side Supabase client
+ * Uses @supabase/supabase-js directly - NO @supabase/ssr dependency
+ * Updated: v0.3.0
+ */
+import { createClient as supabaseCreateClient } from '@supabase/supabase-js'
 
-// Browser-side Supabase client singleton
-let client: ReturnType<typeof createSupabaseClient> | null = null
+let browserClient: ReturnType<typeof supabaseCreateClient> | null = null
 
 export function createClient() {
-  if (client) return client
+  if (browserClient) {
+    return browserClient
+  }
   
-  client = createSupabaseClient(
+  browserClient = supabaseCreateClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
   
-  return client
+  return browserClient
 }
