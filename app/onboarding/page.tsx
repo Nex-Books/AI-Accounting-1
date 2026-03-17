@@ -26,9 +26,13 @@ export default async function OnboardingPage() {
     redirect('/dashboard')
   }
 
+  const userName = user.user_metadata?.full_name || user.user_metadata?.name || ''
+
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-8">
-      <OnboardingWizard userId={user.id} userEmail={user.email || ''} />
-    </div>
+    <OnboardingWizard 
+      userId={user.id} 
+      userEmail={user.email || ''} 
+      userName={userName}
+    />
   )
 }

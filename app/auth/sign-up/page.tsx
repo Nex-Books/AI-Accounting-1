@@ -1,6 +1,7 @@
 import { SignUpForm } from './sign-up-form'
 import { Logo } from '@/components/logo'
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 
 export const metadata = {
   title: 'Sign Up',
@@ -14,7 +15,16 @@ export default function SignUpPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent/30" />
         <div className="relative z-10 flex flex-col justify-between p-12 text-primary-foreground">
-          <Logo variant="light" />
+          <div className="flex items-center justify-between">
+            <Logo variant="light" />
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 text-primary-foreground/70 hover:text-primary-foreground transition-colors text-sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
           <div className="space-y-6">
             <h1 className="text-4xl font-bold leading-tight text-balance">
               Start Your 14-Day Free Trial
@@ -56,8 +66,15 @@ export default function SignUpPage() {
       {/* Right side - Sign Up Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden mb-8">
+          <div className="lg:hidden mb-8 flex items-center justify-between">
             <Logo />
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Home
+            </Link>
           </div>
           
           <div className="space-y-2">
