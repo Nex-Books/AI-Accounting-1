@@ -1,35 +1,53 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+/**
+ * Server-side Supabase client
+ * Uses @supabase/supabase-js directly - NO @supabase/ssr dependency
+ * Updated: v0.3.0
+ */
+import { createClient as supabaseCreateClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
   const cookieStore = await cookies()
-
-  // Get all Supabase auth cookies
   const allCookies = cookieStore.getAll()
-  const authCookies: Record<string, string> = {}
-  allCookies.forEach(c => { authCookies[c.name] = c.value })
+  
+  // Build cookie map
+  const cookieMap: Record<string, string> = {}
+  for (const c of allCookies) {
+    cookieMap[c.name] = c.value
+  }
 
-  // Find the access and refresh tokens from Supabase cookies
-  const accessTokenKey = Object.keys(authCookies).find(k => k.endsWith('-auth-token'))
+  // Find Supabase auth token cookie
+  const authKey = Object.keys(cookieMap).find(k => k.endsWith('-auth-token'))
   let accessToken: string | undefined
   let refreshToken: string | undefined
 
-  if (accessTokenKey) {
+  if (authKey && cookieMap[authKey]) {
     try {
-      const parsed = JSON.parse(authCookies[accessTokenKey])
-      accessToken = parsed?.[0]
-      refreshToken = parsed?.[1]
-    } catch {}
+      const tokenData = JSON.parse(cookieMap[authKey])
+      accessToken = tokenData?.[0]
+      refreshToken = tokenData?.[1]
+    } catch {
+      // Invalid JSON, ignore
+    }
   }
 
-  const supabase = createSupabaseClient(
+  const supabase = supabaseCreateClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
   )
 
+  // Set session if we have tokens
   if (accessToken && refreshToken) {
-    await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+    await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    })
   }
 
   return supabase
