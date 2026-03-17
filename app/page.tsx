@@ -1,6 +1,4 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
 import {
@@ -14,15 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 
-export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // If logged in, redirect to dashboard
-  if (user) {
-    redirect('/dashboard')
-  }
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
