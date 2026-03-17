@@ -1,53 +1,54 @@
+import { updateSession } from '@/lib/supabase/proxy'
 import { type NextRequest, NextResponse } from 'next/server'
+
+// Public paths that don't require authentication
+const PUBLIC_PATHS = [
+  '/auth/login',
+  '/auth/sign-up',
+  '/auth/sign-up-success',
+  '/auth/error',
+  '/auth/callback',
+  '/onboarding',
+  '/',
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
-  // Skip middleware for static files and API routes
+
+  // Skip static assets
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.') // static files
+    pathname.includes('.') 
   ) {
     return NextResponse.next()
   }
-  
-  // Public paths that don't require auth
-  const publicPaths = [
-    '/auth/login',
-    '/auth/sign-up',
-    '/auth/sign-up-success',
-    '/auth/error',
-    '/auth/callback',
-    '/onboarding',
-    '/',
-  ]
-  
-  const isPublicPath = publicPaths.some(path => 
-    pathname === path || pathname.startsWith(path + '/')
+
+  const isPublicPath = PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(path + '/')
   )
-  
-  // Allow all public paths
+
   if (isPublicPath) {
-    return NextResponse.next()
+    // Still refresh session cookies on public paths
+    return await updateSession(request)
   }
-  
-  // For protected paths, check for auth cookie
-  const hasAuthCookie = request.cookies.getAll().some(cookie => 
-    cookie.name.includes('sb-') && cookie.name.includes('-auth-token')
+
+  // For protected paths, refresh session and check auth
+  const response = await updateSession(request)
+
+  // Check for Supabase auth cookie
+  const hasAuth = request.cookies.getAll().some(
+    (c) => c.name.includes('sb-') && c.name.includes('-auth-token')
   )
-  
-  if (!hasAuthCookie) {
+
+  if (!hasAuth) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
-  
-  return NextResponse.next()
+
+  return response
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
