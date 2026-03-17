@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
+// Singleton client instance for browser-side usage
 let client: ReturnType<typeof createSupabaseClient> | null = null
 
 export function createClient() {
