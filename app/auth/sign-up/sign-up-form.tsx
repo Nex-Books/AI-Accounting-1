@@ -33,12 +33,11 @@ export function SignUpForm() {
     try {
       const supabase = createClient()
       
+      // Sign up the user
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName,
           },
@@ -50,13 +49,23 @@ export function SignUpForm() {
         return
       }
 
-      // If email confirmation is required
+      // If user was created but no session (email confirmation required),
+      // sign them in directly to skip email confirmation for now
       if (data.user && !data.session) {
-        router.push('/auth/sign-up-success')
-        return
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        
+        if (signInError) {
+          // If sign-in fails, it might be because email confirmation is enforced
+          // In that case, show the success page
+          router.push('/auth/sign-up-success')
+          return
+        }
       }
 
-      // If auto-confirmed, go to onboarding
+      // Go to onboarding
       router.push('/onboarding')
     } catch {
       setError('An unexpected error occurred')
