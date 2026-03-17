@@ -1,5 +1,6 @@
 'use client'
 
+// Supabase browser client - uses @supabase/supabase-js only (no SSR package)
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 let client: ReturnType<typeof createSupabaseClient> | null = null
