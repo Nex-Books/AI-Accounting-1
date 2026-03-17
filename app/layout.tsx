@@ -1,15 +1,19 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'sonner'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const _jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: {
+    default: 'ElevAIte Books - AI-Powered Accounting',
+    template: '%s | ElevAIte Books',
+  },
+  description: 'Modern AI-powered accounting platform for Indian businesses. GST compliant bookkeeping with intelligent automation.',
+  keywords: ['accounting', 'bookkeeping', 'GST', 'AI', 'India', 'finance'],
   icons: {
     icon: [
       {
@@ -29,15 +33,25 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${_inter.variable} ${_jetbrainsMono.variable} font-sans antialiased`}>
         {children}
+        <Toaster position="top-right" richColors />
         <Analytics />
       </body>
     </html>

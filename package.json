@@ -1,6 +1,6 @@
 {
-  "name": "my-project",
-  "version": "0.1.0",
+  "name": "elevaite-books",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,8 +9,19 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.0",
     "@hookform/resolvers": "^3.9.1",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.2",
+    "@tanstack/react-table": "^8.21.2",
     "@vercel/analytics": "1.6.1",
+    "ai": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "file-saver": "^2.0.5",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "swr": "^2.3.3",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
     "@radix-ui/react-aspect-ratio": "1.1.8",
@@ -61,6 +72,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
