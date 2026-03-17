@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
+// Middleware for auth and multi-tenant routing
 // Extract company slug from subdomain
 function getCompanySlug(request: NextRequest): string | null {
   const host = request.headers.get('host') || ''
