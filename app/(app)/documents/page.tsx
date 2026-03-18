@@ -17,7 +17,7 @@ async function getDocuments(companyId: string): Promise<Document[]> {
     .from('documents')
     .select(`
       *,
-      journal_entry:journal_entries(id, reference_number, description)
+      journal_entry:journal_entries!documents_journal_entry_id_fkey(id, reference_number, description)
     `)
     .eq('company_id', companyId)
     .order('uploaded_at', { ascending: false })

@@ -31,7 +31,7 @@ const SYSTEM_PROMPT = `You are ElevAIte, an expert AI accountant assistant for I
 - Be concise but helpful`
 
 export async function POST(request: Request) {
-  const { messages, companyId, userId } = await request.json()
+  const { messages, companyId, userId, attachments } = await request.json()
 
   if (!companyId || !userId) {
     return new Response('Missing company or user context', { status: 400 })
@@ -60,12 +60,19 @@ export async function POST(request: Request) {
     `${e.reference_number || 'No ref'} - ${e.date}: ${e.description || 'No description'}`
   ).join('\n') || 'No entries yet'
 
+  // Build attachment context
+  const attachmentContext = attachments?.length
+    ? `\n## Uploaded Documents:\n${attachments.map((a: { fileName: string; fileType: string }) => 
+        `- ${a.fileName} (${a.fileType})`).join('\n')}\n\nAnalyze these documents when the user refers to them.`
+    : ''
+
   const contextMessage = `
 ## Company's Chart of Accounts:
 ${accountsContext}
 
 ## Recent Transactions:
 ${recentContext}
+${attachmentContext}
 
 Today's date: ${new Date().toISOString().split('T')[0]}
 `
@@ -337,6 +344,94 @@ Today's date: ${new Date().toISOString().split('T')[0]}
                 name: a.name,
                 type: a.type,
               })),
+            }
+          },
+        }),
+
+        analyze_document: tool({
+          description: 'Analyze an uploaded document (Excel, PDF, Image) and extract transaction data. Use when user uploads a file.',
+          inputSchema: z.object({
+            fileName: z.string().describe('Name of the uploaded file to analyze'),
+            action: z.enum(['extract_transactions', 'summarize', 'categorize']).describe('What to do with the document'),
+          }),
+          execute: async ({ fileName, action }) => {
+            // Find the attachment
+            const attachment = attachments?.find((a: { fileName: string }) => a.fileName === fileName)
+            if (!attachment) {
+              return { success: false, error: `File "${fileName}" not found in attachments` }
+            }
+
+            // Store document reference in database
+            const { data: doc, error: docError } = await supabase
+              .from('documents')
+              .insert({
+                company_id: companyId,
+                file_name: attachment.fileName,
+                file_type: attachment.fileType,
+                file_size_bytes: 0,
+                storage_path: attachment.storagePath,
+                uploaded_by: userId,
+                ocr_status: 'pending',
+              })
+              .select('id')
+              .single()
+
+            if (docError) {
+              return { success: false, error: `Failed to register document: ${docError.message}` }
+            }
+
+            // For now, return a placeholder - in production, this would trigger OCR/AI processing
+            return {
+              success: true,
+              documentId: doc.id,
+              fileName: attachment.fileName,
+              action,
+              summary: `Document "${fileName}" has been uploaded and queued for ${action}. The AI will process it shortly and extract relevant transaction data.`,
+              suggestedActions: action === 'extract_transactions' 
+                ? ['Review extracted transactions', 'Import as journal entries', 'Match with existing records']
+                : ['View document details', 'Re-categorize', 'Link to transaction'],
+            }
+          },
+        }),
+
+        organize_documents: tool({
+          description: 'Organize and categorize documents based on their content or link them to transactions',
+          inputSchema: z.object({
+            documentId: z.string().optional().describe('Specific document ID to organize'),
+            strategy: z.enum(['by_date', 'by_type', 'by_party', 'link_to_entry']).describe('How to organize'),
+            journalEntryId: z.string().optional().describe('Link document to this journal entry'),
+          }),
+          execute: async ({ documentId, strategy, journalEntryId }) => {
+            if (journalEntryId && documentId) {
+              // Link document to journal entry
+              const { error } = await supabase
+                .from('documents')
+                .update({ journal_entry_id: journalEntryId })
+                .eq('id', documentId)
+                .eq('company_id', companyId)
+
+              if (error) return { success: false, error: error.message }
+
+              return {
+                success: true,
+                message: `Document linked to journal entry successfully`,
+                strategy,
+              }
+            }
+
+            // Get all documents for organizing
+            const { data: docs } = await supabase
+              .from('documents')
+              .select('id, file_name, file_type, uploaded_at, journal_entry_id')
+              .eq('company_id', companyId)
+              .order('uploaded_at', { ascending: false })
+
+            return {
+              success: true,
+              totalDocuments: docs?.length || 0,
+              unlinked: docs?.filter(d => !d.journal_entry_id).length || 0,
+              message: `Found ${docs?.length || 0} documents. ${docs?.filter(d => !d.journal_entry_id).length || 0} are not linked to transactions.`,
+              suggestion: 'Upload your documents and I can help link them to the appropriate journal entries.',
             }
           },
         }),

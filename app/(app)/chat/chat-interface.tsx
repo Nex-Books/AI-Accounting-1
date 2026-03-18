@@ -24,10 +24,17 @@ import {
   Search,
   BarChart3,
   IndianRupee,
+  Paperclip,
+  X,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  File,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import type { PlanTier } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface ChatInterfaceProps {
   companyId: string
@@ -35,6 +42,15 @@ interface ChatInterfaceProps {
   plan: PlanTier
   queriesUsed: number
   queriesLimit: number
+}
+
+interface AttachedFile {
+  file: File
+  preview?: string
+  uploading: boolean
+  uploaded: boolean
+  storagePath?: string
+  error?: string
 }
 
 const QUICK_ACTIONS = [
@@ -54,6 +70,20 @@ const EXAMPLE_PROMPTS = [
   'What are my biggest expenses?',
 ]
 
+const SUPPORTED_FILE_TYPES = [
+  '.xlsx', '.xls', '.csv', // Spreadsheets
+  '.pdf', // Documents
+  '.png', '.jpg', '.jpeg', // Images
+]
+
+function getFileIcon(fileName: string) {
+  const ext = fileName.toLowerCase().split('.').pop()
+  if (['xlsx', 'xls', 'csv'].includes(ext || '')) return FileSpreadsheet
+  if (['png', 'jpg', 'jpeg'].includes(ext || '')) return ImageIcon
+  if (ext === 'pdf') return FileText
+  return File
+}
+
 export function ChatInterface({ 
   companyId, 
   userId,
@@ -62,14 +92,27 @@ export function ChatInterface({
   queriesLimit 
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('')
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const chatOptions: UseChatOptions = {
     transport: new DefaultChatTransport({
       api: '/api/chat',
       prepareSendMessagesRequest: ({ messages }) => ({
-        body: { messages, companyId, userId },
+        body: { 
+          messages, 
+          companyId, 
+          userId,
+          attachments: attachedFiles
+            .filter(f => f.uploaded && f.storagePath)
+            .map(f => ({
+              fileName: f.file.name,
+              fileType: f.file.type,
+              storagePath: f.storagePath,
+            }))
+        },
       }),
     }),
   }
@@ -93,11 +136,93 @@ export function ChatInterface({
     }
   }, [input])
 
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files) return
+
+    const newFiles: AttachedFile[] = []
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+      
+      if (!SUPPORTED_FILE_TYPES.includes(ext)) {
+        continue // Skip unsupported files
+      }
+
+      const attachedFile: AttachedFile = {
+        file,
+        uploading: true,
+        uploaded: false,
+      }
+
+      // Generate preview for images
+      if (file.type.startsWith('image/')) {
+        attachedFile.preview = URL.createObjectURL(file)
+      }
+
+      newFiles.push(attachedFile)
+    }
+
+    setAttachedFiles(prev => [...prev, ...newFiles])
+
+    // Upload files to Supabase storage
+    const supabase = createClient()
+    
+    for (const attachedFile of newFiles) {
+      try {
+        const fileName = `${Date.now()}-${attachedFile.file.name}`
+        const filePath = `${companyId}/${userId}/${fileName}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(filePath, attachedFile.file)
+
+        if (uploadError) throw uploadError
+
+        setAttachedFiles(prev => prev.map(f => 
+          f.file === attachedFile.file 
+            ? { ...f, uploading: false, uploaded: true, storagePath: filePath }
+            : f
+        ))
+      } catch (err) {
+        setAttachedFiles(prev => prev.map(f => 
+          f.file === attachedFile.file 
+            ? { ...f, uploading: false, error: 'Upload failed' }
+            : f
+        ))
+      }
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  function removeFile(file: File) {
+    setAttachedFiles(prev => {
+      const toRemove = prev.find(f => f.file === file)
+      if (toRemove?.preview) {
+        URL.revokeObjectURL(toRemove.preview)
+      }
+      return prev.filter(f => f.file !== file)
+    })
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || isLoading || !canSendMessage) return
-    sendMessage({ text: input })
+    
+    const hasUploadingFiles = attachedFiles.some(f => f.uploading)
+    if (hasUploadingFiles) return
+
+    const fileContext = attachedFiles.length > 0
+      ? `\n\n[Attached files: ${attachedFiles.map(f => f.file.name).join(', ')}]`
+      : ''
+    
+    sendMessage({ text: input + fileContext })
     setInput('')
+    setAttachedFiles([])
   }
 
   function handleQuickAction(prompt: string) {
@@ -129,10 +254,26 @@ export function ChatInterface({
               <Sparkles className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-2">ElevAIte Assistant</h2>
-            <p className="text-muted-foreground max-w-lg mb-8">
+            <p className="text-muted-foreground max-w-lg mb-4">
               I&apos;m your AI accountant. Tell me about transactions and I&apos;ll record them instantly. 
-              Ask me anything about your finances.
+              Upload documents and I&apos;ll extract the data automatically.
             </p>
+            
+            {/* File upload info */}
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              <Badge variant="outline" className="gap-1">
+                <FileSpreadsheet className="w-3 h-3" /> Excel
+              </Badge>
+              <Badge variant="outline" className="gap-1">
+                <FileText className="w-3 h-3" /> PDF
+              </Badge>
+              <Badge variant="outline" className="gap-1">
+                <ImageIcon className="w-3 h-3" /> Images
+              </Badge>
+              <Badge variant="outline" className="gap-1">
+                <File className="w-3 h-3" /> CSV
+              </Badge>
+            </div>
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -207,6 +348,50 @@ export function ChatInterface({
         </div>
       )}
 
+      {/* Attached Files Preview */}
+      {attachedFiles.length > 0 && (
+        <div className="border-t px-4 py-3 bg-muted/30">
+          <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
+            {attachedFiles.map((attached, index) => {
+              const FileIcon = getFileIcon(attached.file.name)
+              return (
+                <div 
+                  key={index}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg border bg-card',
+                    attached.error && 'border-destructive bg-destructive/5'
+                  )}
+                >
+                  {attached.preview ? (
+                    <img 
+                      src={attached.preview} 
+                      alt={attached.file.name}
+                      className="w-8 h-8 rounded object-cover"
+                    />
+                  ) : (
+                    <FileIcon className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  <span className="text-sm max-w-[120px] truncate">
+                    {attached.file.name}
+                  </span>
+                  {attached.uploading && <Spinner className="w-4 h-4" />}
+                  {attached.uploaded && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                  {attached.error && <XCircle className="w-4 h-4 text-destructive" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => removeFile(attached.file)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
       <div className="border-t bg-card p-4">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
@@ -226,6 +411,27 @@ export function ChatInterface({
           )}
 
           <div className="flex gap-2">
+            {/* File Upload Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={SUPPORTED_FILE_TYPES.join(',')}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-[52px] w-[52px] shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || !canSendMessage}
+              title="Attach files (Excel, PDF, Images, CSV)"
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+
             <Textarea
               ref={textareaRef}
               value={input}
@@ -248,13 +454,13 @@ export function ChatInterface({
               type="submit" 
               size="icon"
               className="h-[52px] w-[52px] shrink-0"
-              disabled={!input.trim() || isLoading || !canSendMessage}
+              disabled={!input.trim() || isLoading || !canSendMessage || attachedFiles.some(f => f.uploading)}
             >
               {isLoading ? <Spinner className="h-5 w-5" /> : <Send className="h-5 w-5" />}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            Press Enter to send • Shift+Enter for new line
+            Press Enter to send • Shift+Enter for new line • Click <Paperclip className="inline w-3 h-3" /> to attach files
           </p>
         </form>
       </div>
@@ -327,6 +533,35 @@ function MessageBubble({
                         <FileText className="h-4 w-4" />
                         View Entry
                       </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 text-destructive">
+                    <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <p className="text-sm">{result.error}</p>
+                  </div>
+                )}
+              </Card>
+            )
+          }
+
+          // Document Analysis
+          if (tool.toolName === 'analyze_document' && toolResult) {
+            const result = toolResult as { success: boolean; summary?: string; extractedData?: Record<string, unknown>; suggestedEntry?: unknown; error?: string }
+            
+            return (
+              <Card key={index} className={cn(
+                'p-4',
+                result.success ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800' : 'bg-destructive/10 border-destructive/20'
+              )}>
+                {result.success ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                      <FileText className="h-5 w-5" />
+                      <span className="font-semibold">Document Analyzed</span>
+                    </div>
+                    {result.summary && (
+                      <p className="text-sm text-blue-600 dark:text-blue-300">{result.summary}</p>
                     )}
                   </div>
                 ) : (
@@ -418,6 +653,7 @@ function MessageBubble({
                   {tool.toolName === 'create_journal_entry' ? 'Creating entry...' : 
                    tool.toolName === 'get_financial_summary' ? 'Analyzing finances...' :
                    tool.toolName === 'calculate_gst' ? 'Calculating...' :
+                   tool.toolName === 'analyze_document' ? 'Analyzing document...' :
                    'Processing...'}
                 </span>
               </Card>

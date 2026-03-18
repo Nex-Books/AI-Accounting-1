@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies, headers } from 'next/headers'
-import type { Company, User } from './types'
+import type { Company, User, PlanTier } from './types'
+import { PLAN_LIMITS } from './types'
 
 /**
  * Get company slug from various sources (headers, cookies, query)
@@ -63,14 +64,14 @@ export async function getCompanyContext(): Promise<{
     
     if (requestedUser?.company) {
       const company = requestedUser.company as Company
-      const queryLimits: Record<string, number> = { free: 50, pro: 500, enterprise: 10000 }
+      const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.free
       const isOwner = requestedUser.role === 'owner'
       const isAccountant = requestedUser.role === 'accountant' || isOwner
       return {
         company: {
           ...company,
           ai_queries_used: company.ai_queries_used_month || 0,
-          ai_queries_limit: queryLimits[company.plan] || 50,
+          ai_queries_limit: planLimits.queries,
         },
         user: requestedUser as User,
         isOwner,
@@ -83,12 +84,7 @@ export async function getCompanyContext(): Promise<{
   // Return default company
   if (user.company) {
     const company = user.company as Company
-    // Add computed query limits based on plan
-    const queryLimits: Record<string, number> = {
-      free: 50,
-      pro: 500,
-      enterprise: 10000,
-    }
+    const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.free
     const isOwner = user.role === 'owner'
     const isAccountant = user.role === 'accountant' || isOwner
     
@@ -96,7 +92,7 @@ export async function getCompanyContext(): Promise<{
       company: {
         ...company,
         ai_queries_used: company.ai_queries_used_month || 0,
-        ai_queries_limit: queryLimits[company.plan] || 50,
+        ai_queries_limit: planLimits.queries,
       },
       user: user as User,
       isOwner,
