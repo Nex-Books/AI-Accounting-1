@@ -22,79 +22,82 @@ import { cn } from '@/lib/utils'
 
 const plans = [
   {
-    name: 'Free',
-    price: 0,
+    name: 'Essentials',
+    price: 2999,
     description: 'Perfect for freelancers and small businesses getting started',
     popular: false,
     features: [
+      { text: '200 AI transactions/month', included: true },
       { text: '50 AI queries/month', included: true },
-      { text: '10 document uploads/month', included: true },
+      { text: '50 document uploads/month', included: true },
       { text: 'Excel, CSV file analysis', included: true },
       { text: 'Basic journal entries', included: true },
       { text: 'GST calculations', included: true },
-      { text: 'Single user', included: true },
-      { text: 'PDF/Image OCR processing', included: false },
-      { text: 'Bank statement analysis', included: false },
-      { text: 'AI document organization', included: false },
-      { text: 'Priority support', included: false },
+      { text: '2 user seats', included: true },
+      { text: '1 GB storage', included: true },
+      { text: 'Balance Sheet & P&L', included: true },
+      { text: 'Email support', included: true },
     ],
     limits: {
+      transactions: 200,
       queries: 50,
-      documents: 10,
-      storage: '100 MB',
-      users: 1,
+      documents: 50,
+      storage: '1 GB',
+      users: 2,
     },
-    cta: 'Get Started Free',
-    href: '/auth/sign-up',
+    cta: 'Get Started',
+    href: '/auth/sign-up?plan=essentials',
   },
   {
-    name: 'Pro',
-    price: 4999,
+    name: 'Professional',
+    price: 6999,
     description: 'For growing businesses that need advanced AI capabilities',
     popular: true,
     features: [
-      { text: '500 AI queries/month', included: true },
-      { text: '100 document uploads/month', included: true },
+      { text: '1,000 AI transactions/month', included: true },
+      { text: '200 AI queries/month', included: true },
+      { text: '300 document uploads/month', included: true },
       { text: 'Excel, CSV, PDF analysis', included: true },
       { text: 'PNG/JPEG OCR extraction', included: true },
-      { text: 'Bank statement auto-import', included: true },
-      { text: 'AI document organization', included: true },
-      { text: 'Smart transaction matching', included: true },
-      { text: 'Up to 3 team members', included: true },
-      { text: 'Email support', included: true },
-      { text: 'Custom integrations', included: false },
+      { text: 'Cash flow forecast', included: true },
+      { text: 'Scheduled report emails', included: true },
+      { text: '5 user seats', included: true },
+      { text: '5 GB storage', included: true },
+      { text: 'Email & chat support', included: true },
     ],
     limits: {
-      queries: 500,
-      documents: 100,
+      transactions: 1000,
+      queries: 200,
+      documents: 300,
       storage: '5 GB',
-      users: 3,
+      users: 5,
     },
-    cta: 'Start Pro Trial',
-    href: '/auth/sign-up?plan=pro',
+    cta: 'Start Professional',
+    href: '/auth/sign-up?plan=professional',
   },
   {
     name: 'Enterprise',
-    price: 12999,
-    description: 'Unlimited power for large businesses and accounting firms',
+    price: 13999,
+    description: 'Full power for large businesses and accounting firms',
     popular: false,
     features: [
-      { text: 'Unlimited AI queries', included: true },
-      { text: 'Unlimited document uploads', included: true },
+      { text: '3,000 AI transactions/month', included: true },
+      { text: '500 AI queries/month', included: true },
+      { text: '1,000 document uploads/month', included: true },
       { text: 'All file types supported', included: true },
       { text: 'Advanced OCR with AI verification', included: true },
-      { text: 'Multi-bank reconciliation', included: true },
-      { text: 'AI document categorization', included: true },
-      { text: 'Bulk transaction processing', included: true },
-      { text: 'Unlimited team members', included: true },
-      { text: 'Priority phone support', included: true },
-      { text: 'Custom integrations & API', included: true },
+      { text: 'Up to 5 company workspaces', included: true },
+      { text: 'Custom report builder', included: true },
+      { text: '15 user seats', included: true },
+      { text: '25 GB storage', included: true },
+      { text: 'Dedicated account manager', included: true },
     ],
     limits: {
-      queries: -1,
-      documents: -1,
-      storage: '50 GB',
-      users: -1,
+      transactions: 3000,
+      queries: 500,
+      documents: 1000,
+      storage: '25 GB',
+      users: 15,
     },
     cta: 'Contact Sales',
     href: '/contact',
@@ -205,11 +208,11 @@ export default function PricingPage() {
                 {/* Limits summary */}
                 <div className="grid grid-cols-2 gap-3 mb-6 p-4 bg-muted/50 rounded-lg">
                   <div>
-                    <p className="text-2xl font-bold">{plan.limits.queries === -1 ? '∞' : plan.limits.queries}</p>
-                    <p className="text-xs text-muted-foreground">AI queries</p>
+                    <p className="text-2xl font-bold">{plan.limits.transactions.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-muted-foreground">AI transactions</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{plan.limits.documents === -1 ? '∞' : plan.limits.documents}</p>
+                    <p className="text-2xl font-bold">{plan.limits.documents}</p>
                     <p className="text-xs text-muted-foreground">Documents</p>
                   </div>
                   <div>
@@ -217,7 +220,7 @@ export default function PricingPage() {
                     <p className="text-xs text-muted-foreground">Storage</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{plan.limits.users === -1 ? '∞' : plan.limits.users}</p>
+                    <p className="text-2xl font-bold">{plan.limits.users}</p>
                     <p className="text-xs text-muted-foreground">Users</p>
                   </div>
                 </div>
@@ -343,11 +346,11 @@ export default function PricingPage() {
           <Link href="/auth/sign-up">
             <Button size="lg" className="gap-2">
               <Sparkles className="w-5 h-5" />
-              Start Free Today
+              Start Your Trial
             </Button>
           </Link>
           <p className="text-sm text-muted-foreground mt-4">
-            No credit card required • 14-day free trial on Pro
+            14-day free trial • Cancel anytime
           </p>
         </div>
       </main>

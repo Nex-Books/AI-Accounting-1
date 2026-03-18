@@ -1,6 +1,6 @@
 // Database types for ElevAIte Books
 
-export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense'
 export type AccountSubType = 
   | 'current_asset' | 'fixed_asset' | 'other_asset'
   | 'current_liability' | 'long_term_liability'
