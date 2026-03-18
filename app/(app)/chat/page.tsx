@@ -3,6 +3,7 @@ import { ChatInterface } from './chat-interface'
 
 export const metadata = {
   title: 'AI Assistant',
+  description: 'Your intelligent AI accountant that records transactions and manages your books',
 }
 
 export default async function ChatPage() {
@@ -11,19 +12,12 @@ export default async function ChatPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b bg-card p-4">
-        <h1 className="text-xl font-semibold">AI Accountant</h1>
-        <p className="text-sm text-muted-foreground">
-          Your intelligent bookkeeping assistant
-        </p>
-      </div>
-      
       <ChatInterface 
         companyId={context.company.id} 
         userId={context.user.id}
         plan={context.company.plan}
-        queriesUsed={context.company.ai_queries_used}
-        queriesLimit={context.company.ai_queries_limit}
+        queriesUsed={context.company.ai_queries_used || 0}
+        queriesLimit={context.company.ai_queries_limit || 100}
       />
     </div>
   )

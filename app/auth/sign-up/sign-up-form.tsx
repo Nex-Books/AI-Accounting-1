@@ -48,6 +48,7 @@ export function SignUpForm() {
 
       // If there's already a session (email confirmation disabled), go directly
       if (data.session) {
+        router.refresh()
         router.push('/onboarding')
         return
       }
@@ -60,6 +61,7 @@ export function SignUpForm() {
         return
       }
 
+      router.refresh()
       router.push('/onboarding')
     } catch {
       setError('An unexpected error occurred')

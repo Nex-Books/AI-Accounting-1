@@ -32,9 +32,13 @@ export function LoginForm() {
 
       if (signInError) {
         setError(signInError.message)
+        setIsLoading(false)
         return
       }
 
+      // Refresh to sync server-side session, then redirect
+      router.refresh()
+      
       // Check if user has a company
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -49,10 +53,11 @@ export function LoginForm() {
         } else {
           router.push('/onboarding')
         }
+      } else {
+        router.push('/onboarding')
       }
     } catch {
       setError('An unexpected error occurred')
-    } finally {
       setIsLoading(false)
     }
   }
