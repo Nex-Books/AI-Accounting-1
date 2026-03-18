@@ -13,12 +13,12 @@ async function getParentAccounts(companyId: string): Promise<Account[]> {
   
   const { data } = await supabase
     .from('accounts')
-    .select('id, code, name, type, sub_type')
+    .select('*')
     .eq('company_id', companyId)
     .eq('is_active', true)
     .order('code')
   
-  return data || []
+  return (data as Account[]) || []
 }
 
 export default async function NewAccountPage() {
