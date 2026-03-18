@@ -30,7 +30,7 @@ const accountTypes: { value: AccountType; label: string }[] = [
   { value: 'asset', label: 'Asset' },
   { value: 'liability', label: 'Liability' },
   { value: 'equity', label: 'Equity' },
-  { value: 'revenue', label: 'Revenue' },
+  { value: 'income', label: 'Income' },
   { value: 'expense', label: 'Expense' },
 ]
 
@@ -48,7 +48,7 @@ const subTypesByType: Record<AccountType, { value: AccountSubType; label: string
     { value: 'owner_equity', label: "Owner's Equity" },
     { value: 'retained_earnings', label: 'Retained Earnings' },
   ],
-  revenue: [
+  income: [
     { value: 'operating_revenue', label: 'Operating Revenue' },
     { value: 'other_revenue', label: 'Other Revenue' },
   ],
