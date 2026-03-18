@@ -64,7 +64,7 @@ export async function getCompanyContext(): Promise<{
     
     if (requestedUser?.company) {
       const company = requestedUser.company as Company
-      const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.free
+      const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.essentials
       const isOwner = requestedUser.role === 'owner'
       const isAccountant = requestedUser.role === 'accountant' || isOwner
       return {
@@ -84,7 +84,7 @@ export async function getCompanyContext(): Promise<{
   // Return default company
   if (user.company) {
     const company = user.company as Company
-    const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.free
+    const planLimits = PLAN_LIMITS[company.plan as PlanTier] || PLAN_LIMITS.essentials
     const isOwner = user.role === 'owner'
     const isAccountant = user.role === 'accountant' || isOwner
     
