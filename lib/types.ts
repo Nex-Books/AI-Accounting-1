@@ -9,7 +9,7 @@ export type AccountSubType =
   | 'cost_of_goods' | 'operating_expense' | 'other_expense'
 
 export type UserRole = 'owner' | 'accountant' | 'viewer'
-export type PlanTier = 'free' | 'pro' | 'enterprise'
+export type PlanTier = 'essentials' | 'professional' | 'enterprise'
 export type JournalStatus = 'draft' | 'posted' | 'voided'
 export type PartyType = 'customer' | 'vendor' | 'both'
 export type DocumentType = 'invoice' | 'receipt' | 'bill' | 'contract' | 'other'
@@ -279,36 +279,40 @@ export interface CompanyContext {
 }
 
 // Plan limits configuration
-// Based on cost analysis: ~₹10 per document (OCR + AI), so 50 docs = ₹500
-// Free: 10 docs/month = ₹100 cost (subsidized for growth)
-// Pro: 100 docs/month = ₹1000 cost, charges ₹4999 (4x margin)
-// Enterprise: unlimited, charges ₹12999 (handles up to 500 docs = ₹5000 cost, 2.6x margin)
 export const PLAN_LIMITS: Record<PlanTier, {
+  transactions: number   // AI transactions per month
   queries: number        // AI chat queries per month
   documents: number      // Document uploads per month
   storageBytes: number   // Storage in bytes
   users: number          // Team members
   price: number          // Monthly price in INR
+  name: string           // Display name
 }> = {
-  free: {
+  essentials: {
+    transactions: 200,
     queries: 50,
-    documents: 10,
-    storageBytes: 100 * 1024 * 1024, // 100 MB
-    users: 1,
-    price: 0,
+    documents: 50,
+    storageBytes: 1073741824, // 1 GB
+    users: 2,
+    price: 2999,
+    name: 'Essentials',
   },
-  pro: {
-    queries: 500,
-    documents: 100,
-    storageBytes: 5 * 1024 * 1024 * 1024, // 5 GB
-    users: 3,
-    price: 4999,
+  professional: {
+    transactions: 1000,
+    queries: 200,
+    documents: 300,
+    storageBytes: 5368709120, // 5 GB
+    users: 5,
+    price: 6999,
+    name: 'Professional',
   },
   enterprise: {
-    queries: -1, // unlimited
-    documents: -1, // unlimited
-    storageBytes: 50 * 1024 * 1024 * 1024, // 50 GB
-    users: -1, // unlimited
-    price: 12999,
+    transactions: 3000,
+    queries: 500,
+    documents: 1000,
+    storageBytes: 26843545600, // 25 GB
+    users: 15,
+    price: 13999,
+    name: 'Enterprise',
   },
 }

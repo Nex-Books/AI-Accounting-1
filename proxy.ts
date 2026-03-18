@@ -1,15 +1,9 @@
-// Next.js 16 proxy for auth session management
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { createServerClient } from '@supabase/ssr'
 
 const PUBLIC_PATHS = [
   '/',
-  '/auth/login',
-  '/auth/sign-up',
-  '/auth/sign-up-success',
-  '/auth/error',
-  '/auth/callback',
-  '/auth/forgot-password',
+  '/auth',
   '/pricing',
   '/features',
   '/about',
@@ -18,7 +12,7 @@ const PUBLIC_PATHS = [
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip static files, api routes, and Next.js internals
+  // Skip static files and API routes
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -27,48 +21,59 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Update the session and get user
-  const { supabaseResponse, user, hasCompany } = await updateSession(request)
-
   // Check if path is public
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
 
-  // Allow public paths first
-  if (isPublicPath) {
-    // If user is logged in and trying to access login/signup, redirect appropriately
-    if (user && (pathname === '/auth/login' || pathname === '/auth/sign-up')) {
-      return NextResponse.redirect(new URL(hasCompany ? '/dashboard' : '/onboarding', request.url))
+  let response = NextResponse.next({ request })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If no Supabase config, pass through
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response
+  }
+
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    })
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Public paths - allow through
+    if (isPublicPath) {
+      return response
     }
-    return supabaseResponse
-  }
 
-  // Protected routes - require authentication
-  if (!user) {
-    const url = new URL('/auth/login', request.url)
-    url.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(url)
-  }
-
-  // User is authenticated - check if they have a company for app routes
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/journal') || 
-      pathname.startsWith('/reports') || pathname.startsWith('/parties') ||
-      pathname.startsWith('/documents') || pathname.startsWith('/chat') ||
-      pathname.startsWith('/settings')) {
-    if (!hasCompany) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
+    // Protected paths - check auth
+    if (!user) {
+      const url = new URL('/auth/login', request.url)
+      url.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(url)
     }
-  }
 
-  // Onboarding page - if user already has company, redirect to dashboard
-  if (pathname === '/onboarding' || pathname.startsWith('/onboarding/')) {
-    if (hasCompany) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+    return response
+  } catch {
+    // On error, allow public paths, redirect protected to login
+    if (isPublicPath) {
+      return NextResponse.next()
     }
+    return NextResponse.redirect(new URL('/auth/login', request.url))
   }
-
-  return supabaseResponse
 }
 
 export const config = {

@@ -1,6 +1,8 @@
 import { streamText, tool, convertToModelMessages } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { PLAN_LIMITS, type PlanTier } from '@/lib/types'
 
 export const maxDuration = 60
 
@@ -38,6 +40,29 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient()
+
+  // FIX 5: Plan limit enforcement
+  const { data: company } = await supabase
+    .from('companies')
+    .select('plan, ai_transactions_used_month, ai_queries_used_month')
+    .eq('id', companyId)
+    .single()
+
+  const planKey = (company?.plan || 'essentials') as PlanTier
+  const limits = PLAN_LIMITS[planKey] ?? PLAN_LIMITS.essentials
+
+  if ((company?.ai_queries_used_month ?? 0) >= limits.queries) {
+    return Response.json(
+      { error: 'Monthly AI query limit reached. Upgrade your plan to continue.', limitReached: true },
+      { status: 402 }
+    )
+  }
+
+  // Increment query counter
+  await supabase
+    .from('companies')
+    .update({ ai_queries_used_month: (company?.ai_queries_used_month ?? 0) + 1 })
+    .eq('id', companyId)
 
   // Get company's chart of accounts
   const { data: accounts } = await supabase
@@ -79,7 +104,7 @@ Today's date: ${new Date().toISOString().split('T')[0]}
 
   try {
     const result = streamText({
-      model: 'openai/gpt-4o-mini',
+      model: openai('gpt-4o-mini'),
       system: SYSTEM_PROMPT + '\n\n' + contextMessage,
       messages: await convertToModelMessages(messages),
       tools: {
@@ -148,6 +173,12 @@ Today's date: ${new Date().toISOString().split('T')[0]}
               await supabase.from('journal_entries').delete().eq('id', newEntry.id)
               return { success: false, error: linesError.message }
             }
+
+            // Increment AI transaction counter
+            await supabase
+              .from('companies')
+              .update({ ai_transactions_used_month: (company?.ai_transactions_used_month ?? 0) + 1 })
+              .eq('id', companyId)
 
             return {
               success: true,

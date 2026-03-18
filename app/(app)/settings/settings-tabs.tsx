@@ -27,22 +27,48 @@ interface SettingsTabsProps {
 
 const plans = [
   {
-    name: 'Free',
-    price: 0,
-    features: ['50 AI queries/month', '1 user', 'Basic reports', '100 journal entries'],
-    current: true,
+    name: 'Essentials',
+    price: 2999,
+    features: [
+      '200 AI transactions/month',
+      '50 AI queries/month',
+      '50 document uploads/month',
+      '1 GB storage',
+      '2 user seats',
+      'All accounting reports',
+      'Balance Sheet and P&L',
+      'Email support',
+    ],
   },
   {
-    name: 'Pro',
-    price: 999,
-    features: ['500 AI queries/month', '5 users', 'All reports', 'Unlimited entries', 'Priority support'],
-    current: false,
+    name: 'Professional',
+    price: 6999,
+    features: [
+      '1,000 AI transactions/month',
+      '200 AI queries/month',
+      '300 document uploads/month',
+      '5 GB storage',
+      '5 user seats',
+      'Cash flow forecast',
+      'Scheduled report emails',
+      'Custom chart of accounts',
+      'Email and chat support',
+    ],
   },
   {
     name: 'Enterprise',
-    price: 2999,
-    features: ['Unlimited AI queries', 'Unlimited users', 'Custom integrations', 'Dedicated support', 'API access'],
-    current: false,
+    price: 13999,
+    features: [
+      '3,000 AI transactions/month',
+      '500 AI queries/month',
+      '1,000 document uploads/month',
+      '25 GB storage',
+      '15 user seats',
+      'Up to 5 company workspaces',
+      'Custom report builder',
+      'API access',
+      'Dedicated account manager',
+    ],
   },
 ]
 
@@ -121,18 +147,18 @@ function CompanySettings({ company, isOwner }: { company: Company; isOwner: bool
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>State</Label>
-            <Input defaultValue={company.state || ''} placeholder="Not set" disabled={!isOwner} />
+            <Label>Business Type</Label>
+            <Input defaultValue={company.business_type || ''} placeholder="Not set" disabled={!isOwner} />
           </div>
           <div className="space-y-2">
-            <Label>City</Label>
-            <Input defaultValue={company.city || ''} placeholder="Not set" disabled={!isOwner} />
+            <Label>Base Currency</Label>
+            <Input defaultValue={company.base_currency || 'INR'} disabled />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Financial Year Start</Label>
-          <Select defaultValue={company.financial_year_start} disabled={!isOwner}>
+          <Label>Fiscal Year Start</Label>
+          <Select defaultValue={company.fiscal_year_start || '04-01'} disabled={!isOwner}>
             <SelectTrigger className="w-64">
               <SelectValue />
             </SelectTrigger>
@@ -210,7 +236,7 @@ function BillingSettings({ company, isOwner }: { company: Company; isOwner: bool
               <div>
                 <p className="font-semibold text-lg">{currentPlan.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {company.ai_queries_used} / {company.ai_queries_limit} AI queries used
+                  {company.ai_queries_used_month ?? 0} AI queries used this month
                 </p>
               </div>
             </div>

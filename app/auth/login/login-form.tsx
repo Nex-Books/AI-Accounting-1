@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +15,6 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,7 +23,9 @@ export function LoginForm() {
 
     try {
       const supabase = createClient()
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      
+      // Sign in
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -36,8 +36,22 @@ export function LoginForm() {
         return
       }
 
-      // Direct redirect - let proxy handle destination based on user state
-      window.location.href = '/dashboard'
+      if (!authData.user) {
+        setError('Login failed. Please try again.')
+        setIsLoading(false)
+        return
+      }
+
+      // Check if user has a company
+      const { data: userData } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', authData.user.id)
+        .single()
+
+      // Redirect based on company status
+      const destination = userData?.company_id ? '/dashboard' : '/onboarding'
+      window.location.href = destination
     } catch {
       setError('An unexpected error occurred')
       setIsLoading(false)
