@@ -14,24 +14,67 @@ interface BalanceSheetPageProps {
   }>
 }
 
+interface BalanceSheetRow {
+  account_code: string
+  account_name: string
+  type: string
+  sub_type: string | null
+  closing_balance: number
+}
+
 async function getBalanceSheetData(companyId: string, asOfDate: string) {
   const supabase = await createClient()
   
-  const { data, error } = await supabase
-    .from('balance_sheet')
-    .select('*')
+  // Get all accounts with their balances calculated from journal_lines
+  const { data: accounts, error: accountsError } = await supabase
+    .from('accounts')
+    .select('id, code, name, type, sub_type')
     .eq('company_id', companyId)
-    .lte('date', asOfDate)
+    .in('type', ['asset', 'liability', 'equity'])
+    .order('code')
 
-  if (error) {
-    console.error('Error fetching balance sheet:', error)
-    return []
+  if (accountsError || !accounts) {
+    console.error('Error fetching accounts:', accountsError)
+    return { assets: [], liabilities: [], equity: [], asOfDate }
   }
 
+  // Get journal lines up to the as-of date
+  const { data: lines, error: linesError } = await supabase
+    .from('journal_lines')
+    .select(`
+      account_id,
+      debit,
+      credit,
+      journal_entry:journal_entries!inner(date)
+    `)
+    .eq('company_id', companyId)
+    .lte('journal_entry.date', asOfDate)
+
+  if (linesError) {
+    console.error('Error fetching journal lines:', linesError)
+  }
+
+  // Calculate balances for each account
+  const balanceMap = new Map<string, number>()
+  
+  for (const line of (lines || [])) {
+    const current = balanceMap.get(line.account_id) || 0
+    balanceMap.set(line.account_id, current + (line.debit || 0) - (line.credit || 0))
+  }
+
+  // Build the balance sheet rows
+  const rows: BalanceSheetRow[] = accounts.map(account => ({
+    account_code: account.code,
+    account_name: account.name,
+    type: account.type,
+    sub_type: account.sub_type,
+    closing_balance: balanceMap.get(account.id) || 0,
+  })).filter(row => Math.abs(row.closing_balance) > 0.01)
+
   // Group by account type
-  const assets = data.filter(row => row.type === 'asset')
-  const liabilities = data.filter(row => row.type === 'liability')
-  const equity = data.filter(row => row.type === 'equity')
+  const assets = rows.filter(row => row.type === 'asset')
+  const liabilities = rows.filter(row => row.type === 'liability')
+  const equity = rows.filter(row => row.type === 'equity')
 
   return { assets, liabilities, equity, asOfDate }
 }

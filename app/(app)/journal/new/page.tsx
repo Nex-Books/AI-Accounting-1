@@ -1,4 +1,4 @@
-import { getCompanyContext, getNextEntryNumber } from '@/lib/server-utils'
+import { getCompanyContext, getNextReferenceNumber } from '@/lib/server-utils'
 import { createClient } from '@/lib/supabase/server'
 import { JournalEntryForm } from '../journal-entry-form'
 import { redirect } from 'next/navigation'
@@ -41,7 +41,7 @@ export default async function NewJournalEntryPage() {
   }
 
   const { accounts, parties } = await getFormData(context.company.id)
-  const nextEntryNumber = await getNextEntryNumber(context.company.id)
+  const nextEntryNumber = await getNextReferenceNumber(context.company.id)
 
   return (
     <div className="p-6">
