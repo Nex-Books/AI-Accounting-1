@@ -34,12 +34,11 @@ async function getBalanceSheetData(companyId: string, asOfDate: string) {
     .order('code')
 
   if (accountsError || !accounts) {
-    console.error('Error fetching accounts:', accountsError)
     return { assets: [], liabilities: [], equity: [], asOfDate }
   }
 
   // Get journal lines up to the as-of date
-  const { data: lines, error: linesError } = await supabase
+  const { data: lines } = await supabase
     .from('journal_lines')
     .select(`
       account_id,
@@ -49,10 +48,6 @@ async function getBalanceSheetData(companyId: string, asOfDate: string) {
     `)
     .eq('company_id', companyId)
     .lte('journal_entry.date', asOfDate)
-
-  if (linesError) {
-    console.error('Error fetching journal lines:', linesError)
-  }
 
   // Calculate balances for each account
   const balanceMap = new Map<string, number>()

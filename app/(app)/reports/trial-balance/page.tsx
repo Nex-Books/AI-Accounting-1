@@ -18,19 +18,14 @@ async function getTrialBalance(companyId: string): Promise<TrialBalanceRow[]> {
     .order('code')
 
   if (accountsError || !accounts) {
-    console.error('Error fetching accounts:', accountsError)
     return []
   }
 
   // Get all journal lines to calculate balances
-  const { data: lines, error: linesError } = await supabase
+  const { data: lines } = await supabase
     .from('journal_lines')
     .select('account_id, debit, credit')
     .eq('company_id', companyId)
-
-  if (linesError) {
-    console.error('Error fetching journal lines:', linesError)
-  }
 
   // Calculate debit and credit totals for each account
   const balanceMap = new Map<string, { debit: number; credit: number }>()
@@ -48,9 +43,6 @@ async function getTrialBalance(companyId: string): Promise<TrialBalanceRow[]> {
     const balances = balanceMap.get(account.id) || { debit: 0, credit: 0 }
     const netBalance = balances.debit - balances.credit
     
-    // For trial balance, show debit or credit balance based on account type
-    // Assets & Expenses normally have debit balances
-    // Liabilities, Equity & Income normally have credit balances
     let debitBalance = 0
     let creditBalance = 0
     
