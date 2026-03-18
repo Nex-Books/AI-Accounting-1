@@ -74,7 +74,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
           <div>
             <h1 className="text-2xl font-semibold">Balance Sheet</h1>
             <p className="text-muted-foreground">
-              As of {new Date(data.asOfDate).toLocaleDateString('en-IN', {
+              As of {new Date(asOfDate).toLocaleDateString('en-IN', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
