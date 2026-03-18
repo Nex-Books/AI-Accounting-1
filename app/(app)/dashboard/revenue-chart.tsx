@@ -28,7 +28,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
     const monthlyRevenue: Record<string, number> = {}
     
     data.forEach((item) => {
-      if (item.account.type === 'revenue') {
+      if (item.account.type === 'income') {
         const month = item.journal.date.substring(0, 7) // YYYY-MM
         monthlyRevenue[month] = (monthlyRevenue[month] || 0) + item.credit - item.debit
       }
