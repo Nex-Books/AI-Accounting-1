@@ -21,16 +21,17 @@ export interface Company {
   gstin: string | null
   pan: string | null
   address: string | null
-  city: string | null
-  state: string | null
-  pincode: string | null
-  financial_year_start: string
-  currency: string
+  business_type: string | null
+  fiscal_year_start: string | null
+  base_currency: string
   plan: PlanTier
-  ai_queries_used: number
-  ai_queries_limit: number
+  plan_status: string | null
+  razorpay_subscription_id: string | null
+  ai_queries_used_month: number
+  ai_transactions_used_month: number
+  docs_uploaded_month: number
+  storage_used_bytes: number
   created_at: string
-  updated_at: string
 }
 
 export interface User {
@@ -69,20 +70,14 @@ export interface Account {
 export interface JournalEntry {
   id: string
   company_id: string
-  entry_number: string
+  reference_number: string | null
   date: string
-  reference: string | null
-  narration: string | null
-  status: JournalStatus
-  total_debit: number
-  total_credit: number
+  description: string | null
+  document_id: string | null
+  is_opening_balance: boolean
+  created_by_ai: boolean
   created_by: string
-  approved_by: string | null
-  voided_by: string | null
-  voided_at: string | null
-  void_reason: string | null
   created_at: string
-  updated_at: string
   // Relations
   lines?: JournalLine[]
   creator?: User
@@ -91,11 +86,13 @@ export interface JournalEntry {
 export interface JournalLine {
   id: string
   journal_entry_id: string
+  company_id: string
   account_id: string
   party_id: string | null
   debit: number
   credit: number
-  description: string | null
+  narration: string | null
+  created_at: string
   // Relations
   account?: Account
   party?: Party
@@ -126,19 +123,16 @@ export interface Party {
 export interface Document {
   id: string
   company_id: string
-  type: DocumentType
-  name: string
-  file_path: string
-  file_size: number
-  mime_type: string
-  party_id: string | null
+  file_name: string
+  file_type: string | null
+  file_size_bytes: number
+  storage_path: string
   journal_entry_id: string | null
-  ocr_status: 'pending' | 'processing' | 'completed' | 'failed'
-  ocr_data: Record<string, unknown> | null
+  ocr_status: 'pending' | 'processing' | 'completed' | 'failed' | null
+  ocr_extracted_data: Record<string, unknown> | null
   uploaded_by: string
-  created_at: string
+  uploaded_at: string
   // Relations
-  party?: Party
   journal_entry?: JournalEntry
 }
 

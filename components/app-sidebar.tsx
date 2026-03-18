@@ -50,6 +50,12 @@ const mainNavItems = [
     icon: LayoutDashboard,
   },
   {
+    title: 'AI Assistant',
+    href: '/chat',
+    icon: MessageSquare,
+    accent: true,
+  },
+  {
     title: 'Journal',
     href: '/journal',
     icon: BookOpen,
@@ -82,12 +88,6 @@ const mainNavItems = [
 ]
 
 const bottomNavItems = [
-  {
-    title: 'AI Assistant',
-    href: '/chat',
-    icon: MessageSquare,
-    accent: true,
-  },
   {
     title: 'Settings',
     href: '/settings',

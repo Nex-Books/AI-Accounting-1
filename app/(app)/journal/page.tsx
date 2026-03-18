@@ -38,11 +38,7 @@ async function getJournalEntries(
     `)
     .eq('company_id', companyId)
     .order('date', { ascending: false })
-    .order('entry_number', { ascending: false })
-  
-  if (filters.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status)
-  }
+    .order('created_at', { ascending: false })
   
   if (filters.from) {
     query = query.gte('date', filters.from)
@@ -53,7 +49,7 @@ async function getJournalEntries(
   }
   
   if (filters.search) {
-    query = query.or(`entry_number.ilike.%${filters.search}%,narration.ilike.%${filters.search}%`)
+    query = query.or(`reference_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
   }
   
   const { data, error } = await query.limit(100)

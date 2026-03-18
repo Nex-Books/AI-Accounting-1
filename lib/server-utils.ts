@@ -24,8 +24,11 @@ export async function getCompanySlug(): Promise<string | null> {
  * Get the current company and user context
  */
 export async function getCompanyContext(): Promise<{
-  company: Company
+  company: Company & { ai_queries_used: number; ai_queries_limit: number }
   user: User
+  isOwner: boolean
+  isAccountant: boolean
+  canEdit: boolean
 } | null> {
   const supabase = await createClient()
   
@@ -59,18 +62,46 @@ export async function getCompanyContext(): Promise<{
       .single()
     
     if (requestedUser?.company) {
+      const company = requestedUser.company as Company
+      const queryLimits: Record<string, number> = { free: 50, pro: 500, enterprise: 10000 }
+      const isOwner = requestedUser.role === 'owner'
+      const isAccountant = requestedUser.role === 'accountant' || isOwner
       return {
-        company: requestedUser.company as Company,
+        company: {
+          ...company,
+          ai_queries_used: company.ai_queries_used_month || 0,
+          ai_queries_limit: queryLimits[company.plan] || 50,
+        },
         user: requestedUser as User,
+        isOwner,
+        isAccountant,
+        canEdit: isAccountant,
       }
     }
   }
   
   // Return default company
   if (user.company) {
+    const company = user.company as Company
+    // Add computed query limits based on plan
+    const queryLimits: Record<string, number> = {
+      free: 50,
+      pro: 500,
+      enterprise: 10000,
+    }
+    const isOwner = user.role === 'owner'
+    const isAccountant = user.role === 'accountant' || isOwner
+    
     return {
-      company: user.company as Company,
+      company: {
+        ...company,
+        ai_queries_used: company.ai_queries_used_month || 0,
+        ai_queries_limit: queryLimits[company.plan] || 50,
+      },
       user: user as User,
+      isOwner,
+      isAccountant,
+      canEdit: isAccountant,
     }
   }
   
@@ -118,24 +149,16 @@ export function generateSlug(name: string): string {
 }
 
 /**
- * Generate next entry number for journal entries
+ * Generate next reference number for journal entries
  */
-export async function getNextEntryNumber(companyId: string): Promise<string> {
+export async function getNextReferenceNumber(companyId: string): Promise<string> {
   const supabase = await createClient()
   
-  const { data } = await supabase
+  const { count } = await supabase
     .from('journal_entries')
-    .select('entry_number')
+    .select('*', { count: 'exact', head: true })
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
   
-  if (!data) {
-    return 'JE-0001'
-  }
-  
-  const lastNumber = parseInt(data.entry_number.replace('JE-', ''), 10)
-  const nextNumber = (lastNumber + 1).toString().padStart(4, '0')
+  const nextNumber = ((count || 0) + 1).toString().padStart(4, '0')
   return `JE-${nextNumber}`
 }

@@ -19,13 +19,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,7 +30,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -45,7 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/format'
+import { formatCurrency, formatDate } from '@/lib/format'
 import type { JournalEntry } from '@/lib/types'
 import { 
   ChevronRight, 
@@ -55,11 +47,10 @@ import {
   Pencil,
   Eye,
   Copy,
-  Ban,
   ArrowUpDown,
   ChevronLeft,
+  Bot,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 interface JournalTableProps {
@@ -73,9 +64,17 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
   const [expanded, setExpanded] = useState<ExpandedState>({})
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState(searchParams.get('search') || '')
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
 
-  const columns: ColumnDef<JournalEntry>[] = useMemo(
+  // Calculate totals from lines for each entry
+  const entriesWithTotals = useMemo(() => {
+    return entries.map(entry => {
+      const totalDebit = entry.lines?.reduce((sum, line) => sum + (line.debit || 0), 0) || 0
+      const totalCredit = entry.lines?.reduce((sum, line) => sum + (line.credit || 0), 0) || 0
+      return { ...entry, totalDebit, totalCredit }
+    })
+  }, [entries])
+
+  const columns: ColumnDef<typeof entriesWithTotals[0]>[] = useMemo(
     () => [
       {
         id: 'expand',
@@ -99,19 +98,27 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
         size: 40,
       },
       {
-        accessorKey: 'entry_number',
+        accessorKey: 'reference_number',
         header: ({ column }) => (
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="-ml-4"
           >
-            Entry #
+            Reference
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
         cell: ({ row }) => (
-          <span className="font-mono font-medium">{row.original.entry_number}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-medium">{row.original.reference_number || '-'}</span>
+            {row.original.created_by_ai && (
+              <Badge variant="outline" className="text-xs gap-1 py-0">
+                <Bot className="h-3 w-3" />
+                AI
+              </Badge>
+            )}
+          </div>
         ),
       },
       {
@@ -128,35 +135,21 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
         cell: ({ row }) => formatDate(row.original.date, 'medium'),
       },
       {
-        accessorKey: 'narration',
-        header: 'Narration',
+        accessorKey: 'description',
+        header: 'Description',
         cell: ({ row }) => (
           <div className="max-w-md">
-            <p className="line-clamp-1">{row.original.narration || '-'}</p>
-            {row.original.reference && (
-              <p className="text-xs text-muted-foreground">
-                Ref: {row.original.reference}
-              </p>
-            )}
+            <p className="line-clamp-1">{row.original.description || '-'}</p>
           </div>
         ),
       },
       {
-        accessorKey: 'total_debit',
+        accessorKey: 'totalDebit',
         header: () => <div className="text-right">Amount</div>,
         cell: ({ row }) => (
           <div className="text-right font-mono">
-            {formatCurrency(row.original.total_debit)}
+            {formatCurrency(row.original.totalDebit)}
           </div>
-        ),
-      },
-      {
-        accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => (
-          <Badge variant="outline" className={getStatusColor(row.original.status)}>
-            {row.original.status}
-          </Badge>
         ),
       },
       {
@@ -176,7 +169,7 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
                   View Details
                 </Link>
               </DropdownMenuItem>
-              {canEdit && row.original.status === 'draft' && (
+              {canEdit && (
                 <DropdownMenuItem asChild>
                   <Link href={`/journal/${row.original.id}/edit`}>
                     <Pencil className="mr-2 h-4 w-4" />
@@ -188,15 +181,6 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
                 <Copy className="mr-2 h-4 w-4" />
                 Duplicate
               </DropdownMenuItem>
-              {canEdit && row.original.status === 'posted' && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <Ban className="mr-2 h-4 w-4" />
-                    Void Entry
-                  </DropdownMenuItem>
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -207,7 +191,7 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
   )
 
   const table = useReactTable({
-    data: entries,
+    data: entriesWithTotals,
     columns,
     state: {
       expanded,
@@ -230,7 +214,7 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
   // Update URL when filters change
   function updateFilters(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
-    if (value && value !== 'all') {
+    if (value) {
       params.set(key, value)
     } else {
       params.delete(key)
@@ -255,23 +239,6 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
               className="pl-9"
             />
           </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value)
-              updateFilters('status', value)
-            }}
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="posted">Posted</SelectItem>
-              <SelectItem value="voided">Voided</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Table */}
@@ -354,7 +321,7 @@ export function JournalTable({ entries, canEdit }: JournalTableProps) {
   )
 }
 
-function JournalLinesDetail({ entry }: { entry: JournalEntry }) {
+function JournalLinesDetail({ entry }: { entry: JournalEntry & { totalDebit: number; totalCredit: number } }) {
   if (!entry.lines || entry.lines.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -370,7 +337,7 @@ function JournalLinesDetail({ entry }: { entry: JournalEntry }) {
           <tr className="text-muted-foreground">
             <th className="text-left font-medium pb-2">Account</th>
             <th className="text-left font-medium pb-2">Party</th>
-            <th className="text-left font-medium pb-2">Description</th>
+            <th className="text-left font-medium pb-2">Narration</th>
             <th className="text-right font-medium pb-2">Debit</th>
             <th className="text-right font-medium pb-2">Credit</th>
           </tr>
@@ -388,7 +355,7 @@ function JournalLinesDetail({ entry }: { entry: JournalEntry }) {
                 {line.party?.name || '-'}
               </td>
               <td className="py-2 text-muted-foreground">
-                {line.description || '-'}
+                {line.narration || '-'}
               </td>
               <td className="py-2 text-right font-mono">
                 {line.debit > 0 ? formatCurrency(line.debit) : '-'}
@@ -401,10 +368,10 @@ function JournalLinesDetail({ entry }: { entry: JournalEntry }) {
           <tr className="border-t-2 border-border font-medium">
             <td colSpan={3} className="py-2">Total</td>
             <td className="py-2 text-right font-mono">
-              {formatCurrency(entry.total_debit)}
+              {formatCurrency(entry.totalDebit)}
             </td>
             <td className="py-2 text-right font-mono">
-              {formatCurrency(entry.total_credit)}
+              {formatCurrency(entry.totalCredit)}
             </td>
           </tr>
         </tbody>

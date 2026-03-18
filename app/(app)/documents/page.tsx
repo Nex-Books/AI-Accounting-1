@@ -17,11 +17,10 @@ async function getDocuments(companyId: string): Promise<Document[]> {
     .from('documents')
     .select(`
       *,
-      party:parties(id, name),
-      journal_entry:journal_entries(id, entry_number)
+      journal_entry:journal_entries(id, reference_number, description)
     `)
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false })
+    .order('uploaded_at', { ascending: false })
   
   if (error) {
     console.error('Error fetching documents:', error)
