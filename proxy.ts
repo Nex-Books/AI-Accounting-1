@@ -27,48 +27,60 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Update the session and get user
-  const { supabaseResponse, user, hasCompany } = await updateSession(request)
+  try {
+    // Update the session and get user
+    const { supabaseResponse, user, hasCompany } = await updateSession(request)
 
-  // Check if path is public
-  const isPublicPath = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + '/')
-  )
+    // Check if path is public
+    const isPublicPath = PUBLIC_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + '/')
+    )
 
-  // Allow public paths first
-  if (isPublicPath) {
-    // If user is logged in and trying to access login/signup, redirect appropriately
-    if (user && (pathname === '/auth/login' || pathname === '/auth/sign-up')) {
-      return NextResponse.redirect(new URL(hasCompany ? '/dashboard' : '/onboarding', request.url))
+    // Allow public paths first
+    if (isPublicPath) {
+      // If user is logged in and trying to access login/signup, redirect appropriately
+      if (user && (pathname === '/auth/login' || pathname === '/auth/sign-up')) {
+        return NextResponse.redirect(new URL(hasCompany ? '/dashboard' : '/onboarding', request.url))
+      }
+      return supabaseResponse
     }
+
+    // Protected routes - require authentication
+    if (!user) {
+      const url = new URL('/auth/login', request.url)
+      url.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(url)
+    }
+
+    // User is authenticated - check if they have a company for app routes
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/journal') || 
+        pathname.startsWith('/reports') || pathname.startsWith('/parties') ||
+        pathname.startsWith('/documents') || pathname.startsWith('/chat') ||
+        pathname.startsWith('/settings')) {
+      if (!hasCompany) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+    }
+
+    // Onboarding page - if user already has company, redirect to dashboard
+    if (pathname === '/onboarding' || pathname.startsWith('/onboarding/')) {
+      if (hasCompany) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+    }
+
     return supabaseResponse
-  }
-
-  // Protected routes - require authentication
-  if (!user) {
-    const url = new URL('/auth/login', request.url)
-    url.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(url)
-  }
-
-  // User is authenticated - check if they have a company for app routes
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/journal') || 
-      pathname.startsWith('/reports') || pathname.startsWith('/parties') ||
-      pathname.startsWith('/documents') || pathname.startsWith('/chat') ||
-      pathname.startsWith('/settings')) {
-    if (!hasCompany) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
+  } catch (error) {
+    console.error('[proxy] Error:', error)
+    // On error, allow the request through for public paths, redirect to login for protected
+    const isPublicPath = PUBLIC_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + '/')
+    )
+    if (isPublicPath) {
+      return NextResponse.next()
     }
+    return NextResponse.redirect(new URL('/auth/login', request.url))
   }
-
-  // Onboarding page - if user already has company, redirect to dashboard
-  if (pathname === '/onboarding' || pathname.startsWith('/onboarding/')) {
-    if (hasCompany) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  }
-
-  return supabaseResponse
 }
 
 export const config = {
