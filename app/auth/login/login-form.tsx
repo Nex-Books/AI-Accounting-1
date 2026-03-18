@@ -36,26 +36,8 @@ export function LoginForm() {
         return
       }
 
-      // Refresh to sync server-side session, then redirect
-      router.refresh()
-      
-      // Check if user has a company
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('company_id')
-          .eq('id', user.id)
-          .single()
-
-        if (userData?.company_id) {
-          router.push('/dashboard')
-        } else {
-          router.push('/onboarding')
-        }
-      } else {
-        router.push('/onboarding')
-      }
+      // Direct redirect - let proxy handle destination based on user state
+      window.location.href = '/dashboard'
     } catch {
       setError('An unexpected error occurred')
       setIsLoading(false)
