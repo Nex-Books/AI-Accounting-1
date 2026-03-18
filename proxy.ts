@@ -1,3 +1,4 @@
+// Next.js 16 proxy for auth session management
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/session'
 
