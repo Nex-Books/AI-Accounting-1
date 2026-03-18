@@ -24,6 +24,17 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
+  
+  // Check if user has a company
+  let hasCompany = false
+  if (user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+    hasCompany = !!userData?.company_id
+  }
 
-  return { supabaseResponse, user }
+  return { supabaseResponse, user, hasCompany, supabase }
 }

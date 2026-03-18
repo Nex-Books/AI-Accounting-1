@@ -41,11 +41,16 @@ interface BalanceSheetReportProps {
 
 export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProps) {
   const router = useRouter()
-  const [asOfDate, setAsOfDate] = useState(data.asOfDate)
+  const [asOfDate, setAsOfDate] = useState(data?.asOfDate || new Date().toISOString().split('T')[0])
 
-  const totalAssets = data.assets.reduce((sum, row) => sum + row.closing_balance, 0)
-  const totalLiabilities = data.liabilities.reduce((sum, row) => sum + Math.abs(row.closing_balance), 0)
-  const totalEquity = data.equity.reduce((sum, row) => sum + Math.abs(row.closing_balance), 0)
+  // Safely handle potentially undefined arrays
+  const assets = data?.assets || []
+  const liabilities = data?.liabilities || []
+  const equity = data?.equity || []
+
+  const totalAssets = assets.reduce((sum, row) => sum + row.closing_balance, 0)
+  const totalLiabilities = liabilities.reduce((sum, row) => sum + Math.abs(row.closing_balance), 0)
+  const totalEquity = equity.reduce((sum, row) => sum + Math.abs(row.closing_balance), 0)
 
   function handleDateChange() {
     router.push(`/reports/balance-sheet?date=${asOfDate}`)
@@ -118,7 +123,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
           <CardTitle className="text-xl">{companyName}</CardTitle>
           <p className="text-lg font-medium">Balance Sheet</p>
           <p className="text-sm text-muted-foreground">
-            As at {new Date(data.asOfDate).toLocaleDateString('en-IN', {
+            As at {new Date(asOfDate).toLocaleDateString('en-IN', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
@@ -138,7 +143,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.assets.length === 0 ? (
+                  {assets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={2} className="text-center text-muted-foreground">
                         No assets recorded
@@ -146,7 +151,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                     </TableRow>
                   ) : (
                     <>
-                      {data.assets.map((row) => (
+                      {assets.map((row) => (
                         <TableRow key={row.account_code}>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -186,7 +191,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.liabilities.length === 0 ? (
+                    {liabilities.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={2} className="text-center text-muted-foreground">
                           No liabilities recorded
@@ -194,7 +199,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                       </TableRow>
                     ) : (
                       <>
-                        {data.liabilities.map((row) => (
+                        {liabilities.map((row) => (
                           <TableRow key={row.account_code}>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -232,7 +237,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.equity.length === 0 ? (
+                    {equity.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={2} className="text-center text-muted-foreground">
                           No equity recorded
@@ -240,7 +245,7 @@ export function BalanceSheetReport({ data, companyName }: BalanceSheetReportProp
                       </TableRow>
                     ) : (
                       <>
-                        {data.equity.map((row) => (
+                        {equity.map((row) => (
                           <TableRow key={row.account_code}>
                             <TableCell>
                               <div className="flex items-center gap-2">
