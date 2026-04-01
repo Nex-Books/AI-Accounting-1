@@ -15,11 +15,6 @@ export const metadata = {
 async function getDashboardData(companyId: string) {
   const supabase = await createClient()
   
-  // Get KPIs
-  const { data: kpis } = await supabase
-    .rpc('get_dashboard_kpis', { p_company_id: companyId })
-    .single()
-  
   // Get recent journal entries
   const { data: recentJournals } = await supabase
     .from('journal_entries')
@@ -32,35 +27,64 @@ async function getDashboardData(companyId: string) {
     .order('date', { ascending: false })
     .limit(5)
   
-  // Get monthly revenue data for chart (last 6 months)
+  // Get monthly data for charts (last 6 months)
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
   
-  const { data: monthlyData } = await supabase
+  const { data: journalLines } = await supabase
     .from('journal_lines')
     .select(`
       credit,
       debit,
       account:accounts!inner(type),
-      journal:journal_entries!inner(date, status, company_id)
+      journal:journal_entries!inner(date, company_id)
     `)
-    .eq('journal.company_id', companyId)
-    .eq('journal.status', 'posted')
+    .eq('company_id', companyId)
     .gte('journal.date', sixMonthsAgo.toISOString().split('T')[0])
   
+  // Calculate KPIs from journal lines
+  let totalRevenue = 0
+  let totalExpenses = 0
+  let totalReceivables = 0
+  let totalPayables = 0
+  let cashBalance = 0
+  
+  for (const line of journalLines || []) {
+    const account = line.account as { type: string } | null
+    if (!account) continue
+    
+    const netAmount = (line.debit || 0) - (line.credit || 0)
+    
+    switch (account.type) {
+      case 'income':
+        totalRevenue += line.credit || 0
+        break
+      case 'expense':
+        totalExpenses += line.debit || 0
+        break
+      case 'asset':
+        if (netAmount > 0) totalReceivables += netAmount
+        cashBalance += netAmount
+        break
+      case 'liability':
+        if (netAmount < 0) totalPayables += Math.abs(netAmount)
+        break
+    }
+  }
+  
   return {
-    kpis: kpis || {
-      total_revenue: 0,
-      total_expenses: 0,
-      net_income: 0,
-      total_receivables: 0,
-      total_payables: 0,
-      cash_balance: 0,
+    kpis: {
+      total_revenue: totalRevenue,
+      total_expenses: totalExpenses,
+      net_income: totalRevenue - totalExpenses,
+      total_receivables: totalReceivables,
+      total_payables: totalPayables,
+      cash_balance: cashBalance,
       revenue_growth: 0,
       expense_growth: 0,
     },
     recentJournals: recentJournals || [],
-    monthlyData: monthlyData || [],
+    monthlyData: journalLines || [],
   }
 }
 
